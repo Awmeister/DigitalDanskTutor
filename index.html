@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sokratisk Dansk-Tutor</title>
+    <title>Sokratisk Dansk-tutor</title>
     <!-- Tailwind CSS til moderne og responsivt design -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -93,30 +93,37 @@
 
     <!-- Header med Kontroller -->
     <header class="bg-white dark:bg-petrol-900 shadow-sm border-b border-slate-200 dark:border-petrol-800 p-4 sticky top-0 z-10 transition-colors duration-200">
-        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-2">
-                <!-- Nyt, sprudlende (men rent) design på titlen vha. gradient-tekst -->
-                <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-500 dark:from-petrol-200 dark:to-teal-300 tracking-tight">
-                    Din digitale tutor i dansk
-                </h1>
-            </div>
+        <div class="max-w-5xl mx-auto flex flex-col gap-3">
             
-            <div class="flex flex-wrap gap-2 items-center w-full sm:w-auto justify-center">
-                <!-- Dropdown: Klassetrin -->
-                <select id="gradeSelect" class="bg-slate-100 dark:bg-petrol-950 border border-slate-300 dark:border-petrol-800 text-slate-700 dark:text-petrol-50 text-sm rounded-lg focus:ring-petrol-500 focus:border-petrol-500 block p-2 outline-none">
-                    <option value="7">7. Klasse</option>
-                    <option value="8">8. Klasse</option>
-                    <option value="9">9. Klasse</option>
-                </select>
+            <!-- Øverste linje: Titel og Dropdowns -->
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <!-- Nyt, sprudlende (men rent) design på titlen vha. gradient-tekst -->
+                    <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-500 dark:from-petrol-200 dark:to-teal-300 tracking-tight">
+                        Din digitale tutor i dansk
+                    </h1>
+                </div>
+                
+                <div class="flex gap-2 items-center w-full sm:w-auto justify-center">
+                    <!-- Dropdown: Klassetrin -->
+                    <select id="gradeSelect" class="bg-slate-100 dark:bg-petrol-950 border border-slate-300 dark:border-petrol-800 text-slate-700 dark:text-petrol-50 text-sm rounded-lg focus:ring-petrol-500 focus:border-petrol-500 block p-2 outline-none">
+                        <option value="7">7. Klasse</option>
+                        <option value="8">8. Klasse</option>
+                        <option value="9">9. Klasse</option>
+                    </select>
 
-                <!-- Dropdown: Emne -->
-                <select id="subjectSelect" class="bg-slate-100 dark:bg-petrol-950 border border-slate-300 dark:border-petrol-800 text-slate-700 dark:text-petrol-50 text-sm rounded-lg focus:ring-petrol-500 focus:border-petrol-500 block p-2 outline-none">
-                    <option value="novelleanalyse">Novelleanalyse</option>
-                    <option value="argumentation">Argumentation</option>
-                    <option value="essay">Essay-skrivning</option>
-                    <option value="sprog">Sprog & Stil</option>
-                </select>
+                    <!-- Dropdown: Emne -->
+                    <select id="subjectSelect" class="bg-slate-100 dark:bg-petrol-950 border border-slate-300 dark:border-petrol-800 text-slate-700 dark:text-petrol-50 text-sm rounded-lg focus:ring-petrol-500 focus:border-petrol-500 block p-2 outline-none">
+                        <option value="novelleanalyse">Novelleanalyse</option>
+                        <option value="argumentation">Argumentation</option>
+                        <option value="essay">Essay-skrivning</option>
+                        <option value="sprog">Sprog & Stil</option>
+                    </select>
+                </div>
+            </div>
 
+            <!-- Nederste linje: Knapper -->
+            <div class="flex flex-wrap gap-2 items-center w-full justify-center sm:justify-end">
                 <!-- Se systemprompt knap -->
                 <button id="showPromptBtn" class="bg-slate-200 dark:bg-petrol-800 hover:bg-slate-300 dark:hover:bg-petrol-700 text-slate-700 dark:text-petrol-50 text-sm font-medium rounded-lg px-3 py-2 transition-colors flex items-center gap-1" title="Se aktuel systemprompt">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -427,8 +434,8 @@
                     if (Object.keys(newDatabase).length > 0) {
                         promptDatabase = newDatabase; 
                         
-                        // Visuel succes-besked til brugeren
-                        if(btnText) btnText.textContent = "Systemprompt (Synkroniseret)";
+                        // Visuel succes-besked til brugeren (Nu med kortere "Systemprompt ✓" tekst)
+                        if(btnText) btnText.textContent = "Systemprompt ✓";
                         elements.showPromptBtn.classList.add('text-emerald-600', 'dark:text-emerald-400');
                     } else {
                         if(btnText) btnText.textContent = "Systemprompt (Fejl i data)";
