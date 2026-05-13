@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="da" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sokratisk Dansk-Tutor</title>
+    <!-- Tailwind CSS til moderne og responsivt design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Konfigurer Tailwind til at understøtte vores petroleumsfarver og dark mode
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        petrol: {
+                            950: '#082024',
+                            900: '#0d3036',
+                            800: '#164a52',
+                            700: '#145d69',
+                            600: '#1d7e8c',
+                            500: '#239aa8',
+                            200: '#99d6de',
+                            100: '#ccf1f5',
+                            50: '#eefafc',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Sikrer at chat-vinduet scroller pænt */
+        .chat-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        /* ORDBLINDE-VENLIGT DESIGN (Dyslexia Mode) */
+        body.dyslexic-mode {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif !important;
+            letter-spacing: 0.05em !important;
+            line-height: 1.8 !important;
+        }
+        
+        /* Simpel animation til "Botten tænker..." */
+        .dot-flashing {
+            position: relative;
+            width: 8px;
+            height: 8px;
+            border-radius: 5px;
+            background-color: #3b82f6;
+            color: #3b82f6;
+            animation: dot-flashing 1s infinite linear alternate;
+            animation-delay: 0.5s;
+        }
+        .dot-flashing::before, .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 5px;
+            background-color: #3b82f6;
+            color: #3b82f6;
+            animation: dot-flashing 1s infinite alternate;
+        }
+        .dot-flashing::before {
+            left: -12px;
+            animation-delay: 0s;
+        }
+        .dot-flashing::after {
+            left: 12px;
+            animation-delay: 1s;
+        }
+        @keyframes dot-flashing {
+            0% { background-color: #3b82f6; }
+            50%, 100% { background-color: #e2e8f0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-petrol-950 h-screen flex flex-col font-sans text-slate-800 dark:text-petrol-50 transition-colors duration-200">
+
+    <!-- Header med Kontroller -->
+    <header class="bg-white dark:bg-petrol-900 shadow-sm border-b border-slate-200 dark:border-petrol-800 p-4 sticky top-0 z-10 transition-colors duration-200">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+                <!-- Nyt, sprudlende (men rent) design på titlen vha. gradient-tekst -->
+                <h1 class="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-teal-500 dark:from-petrol-200 dark:to-teal-300 tracking-tight">
+                    Din digitale tutor i dansk
+                </h1>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 items-center w-full sm:w-auto justify-center">
+                <!-- Dropdown: Klassetrin -->
+                <select id="gradeSelect" class="bg-slate-100 dark:bg-petrol-950 border border-slate-300 dark:border-petrol-800 text-slate-700 dark:text-petrol-50 text-sm rounded-lg focus:ring-petrol-500 focus:border-petrol-500 block p-2 outline-none">
+                    <option value="7">7. Klasse</option>
+                    <option value="8">8. Klasse</option>
+                    <option value="9">9. Klasse</option>
+                </select>
+
+                <!-- Dropdown: Emne -->
+                <select id="subjectSelect" class="bg-slate-100 dark:bg-petrol-950 border border-slate-300 dark:border-petrol-800 text-slate-700 dark:text-petrol-50 text-sm rounded-lg focus:ring-petrol-500 focus:border-petrol-500 block p-2 outline-none">
+                    <option value="novelleanalyse">Novelleanalyse</option>
+                    <option value="argumentation">Argumentation</option>
+                    <option value="essay">Essay-skrivning</option>
+                    <option value="sprog">Sprog & Stil</option>
+                </select>
+
+                <!-- Se systemprompt knap -->
+                <button id="showPromptBtn" class="bg-slate-200 dark:bg-petrol-800 hover:bg-slate-300 dark:hover:bg-petrol-700 text-slate-700 dark:text-petrol-50 text-sm font-medium rounded-lg px-3 py-2 transition-colors flex items-center gap-1" title="Se aktuel systemprompt">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span id="promptBtnText">Systemprompt</span>
+                </button>
+
+                <!-- Eksportér noter knap -->
+                <button id="exportBtn" class="bg-emerald-100 dark:bg-teal-900/50 hover:bg-emerald-200 dark:hover:bg-teal-800 text-emerald-800 dark:text-teal-100 border border-emerald-200 dark:border-teal-700 text-sm font-medium rounded-lg px-3 py-2 transition-colors flex items-center gap-1" title="Eksportér samtale">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Eksportér
+                </button>
+
+                <!-- Nulstil knap -->
+                <button id="resetBtn" class="bg-slate-200 dark:bg-petrol-800 hover:bg-slate-300 dark:hover:bg-petrol-700 text-slate-700 dark:text-petrol-50 text-sm font-medium rounded-lg px-3 py-2 transition-colors flex items-center gap-1" title="Start forfra">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Nulstil
+                </button>
+
+                <div class="h-6 w-px bg-slate-300 dark:bg-petrol-700 mx-1 hidden sm:block"></div>
+
+                <!-- Ordblind / Dyslexia knap -->
+                <button id="dyslexiaBtn" class="bg-slate-200 dark:bg-petrol-800 hover:bg-slate-300 dark:hover:bg-petrol-700 text-slate-700 dark:text-petrol-50 p-2 rounded-lg transition-colors flex items-center justify-center font-serif font-bold text-sm min-w-[36px]" aria-label="Slå ordblinde-venlig skrifttype til/fra" title="Læsevenlig skrift">
+                    Aa
+                </button>
+
+                <!-- Tema skift knap -->
+                <button id="themeToggleBtn" class="bg-slate-200 dark:bg-petrol-800 hover:bg-slate-300 dark:hover:bg-petrol-700 text-slate-700 dark:text-petrol-50 p-2 rounded-lg transition-colors min-w-[36px] flex justify-center" aria-label="Skift tema">
+                    <svg id="moonIcon" class="w-4 h-4 hidden dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                    <svg id="sunIcon" class="w-4 h-4 block dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Chat Vindue -->
+    <main id="chatContainer" class="flex-1 max-w-4xl w-full mx-auto p-4 overflow-y-auto chat-scroll flex flex-col gap-4">
+        <!-- Beskeder genereres dynamisk her -->
+    </main>
+
+    <!-- Loading Indikator (Skjult som standard) -->
+    <div id="loadingIndicator" class="hidden max-w-4xl w-full mx-auto px-4 pb-2">
+        <div class="flex gap-4">
+            <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-petrol-800 flex items-center justify-center flex-shrink-0 border border-blue-200 dark:border-petrol-700 dark:text-petrol-50">🤖</div>
+            <div class="bg-white dark:bg-petrol-900 border border-slate-200 dark:border-petrol-800 p-4 rounded-2xl rounded-tl-none shadow-sm flex items-center justify-center w-24">
+                <div class="dot-flashing ml-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Felt & Footer -->
+    <footer class="bg-white dark:bg-petrol-900 border-t border-slate-200 dark:border-petrol-800 p-4 transition-colors duration-200 flex flex-col gap-3 relative">
+        
+        <!-- Giv mig et hint knap (vises over skrivefeltet) -->
+        <div class="max-w-4xl w-full mx-auto flex justify-start -mt-8 mb-2 absolute left-0 right-0 px-4 pointer-events-none">
+            <button id="hintBtn" class="pointer-events-auto bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-700 shadow-sm px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors transform -translate-y-full opacity-0 hidden">
+                💡 Giv mig et hint
+            </button>
+        </div>
+
+        <!-- Input felt -->
+        <div class="max-w-4xl w-full mx-auto flex gap-2 items-end z-10">
+            <textarea id="userInput" rows="1" placeholder="Skriv din besked her..." class="w-full bg-slate-50 dark:bg-petrol-950 border border-slate-300 dark:border-petrol-800 text-slate-800 dark:text-petrol-50 text-sm rounded-xl focus:ring-petrol-500 focus:border-petrol-500 block p-3 outline-none resize-none overflow-hidden" style="min-height: 44px; max-height: 120px;"></textarea>
+            
+            <button id="sendBtn" class="bg-blue-600 dark:bg-petrol-600 hover:bg-blue-700 dark:hover:bg-petrol-500 text-white p-3 rounded-xl transition-colors flex-shrink-0 flex items-center justify-center h-[46px] w-[46px]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="max-w-4xl w-full mx-auto flex flex-col items-center gap-3">
+            <p class="text-center text-xs text-slate-400 dark:text-petrol-200">AI-modeller kan lave fejl. Husk altid at vurdere svarene selv.</p>
+            
+            <!-- Info Knapper -->
+            <div class="flex flex-wrap justify-center gap-2 sm:gap-3">
+                <button onclick="openInfoModal('eleven')" class="px-4 py-1.5 rounded-full border border-slate-200 dark:border-petrol-700 bg-slate-50 dark:bg-petrol-950 text-xs font-medium text-slate-600 dark:text-petrol-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 dark:hover:bg-petrol-800 transition-all shadow-sm">
+                    Til eleven
+                </button>
+                <button onclick="openInfoModal('foraeldrene')" class="px-4 py-1.5 rounded-full border border-slate-200 dark:border-petrol-700 bg-slate-50 dark:bg-petrol-950 text-xs font-medium text-slate-600 dark:text-petrol-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 dark:hover:bg-petrol-800 transition-all shadow-sm">
+                    Til forældrene
+                </button>
+                <button onclick="openInfoModal('laereren')" class="px-4 py-1.5 rounded-full border border-slate-200 dark:border-petrol-700 bg-slate-50 dark:bg-petrol-950 text-xs font-medium text-slate-600 dark:text-petrol-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 dark:hover:bg-petrol-800 transition-all shadow-sm">
+                    Til læreren
+                </button>
+            </div>
+
+            <!-- Credits -->
+            <div class="text-center text-xs text-slate-500 dark:text-petrol-300 leading-relaxed mt-1">
+                Udviklet af Anders Westermann | <a href="https://futurisme.dk" target="_blank" class="font-semibold text-blue-600 dark:text-petrol-200 hover:underline">Futurisme.dk</a><br>
+                Motoriseret af <a href="https://skolegpt.dk" target="_blank" class="font-semibold text-blue-600 dark:text-petrol-200 hover:underline">SkoleGPT.dk</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal til Systemprompt -->
+    <div id="promptModal" class="hidden fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-petrol-900 rounded-xl shadow-xl max-w-2xl w-full flex flex-col overflow-hidden border border-slate-200 dark:border-petrol-800">
+            <div class="p-4 border-b border-slate-200 dark:border-petrol-800 flex justify-between items-center bg-slate-50 dark:bg-petrol-950">
+                <h2 class="font-bold text-slate-800 dark:text-petrol-50">Aktuel Systemprompt</h2>
+                <button id="closeModalBtn" class="text-slate-500 hover:text-slate-700 dark:text-petrol-200 dark:hover:text-white text-2xl font-bold leading-none">&times;</button>
+            </div>
+            <div class="p-4 overflow-y-auto max-h-[60vh]">
+                <pre id="modalPromptText" class="whitespace-pre-wrap text-sm text-slate-700 dark:text-petrol-100 font-mono"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal til Info (Eleven, Forældre, Lærer) -->
+    <div id="infoModal" class="hidden fixed inset-0 bg-slate-900/50 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-petrol-900 rounded-xl shadow-xl max-w-lg w-full flex flex-col overflow-hidden border border-slate-200 dark:border-petrol-800 transition-all">
+            <div class="p-4 border-b border-slate-200 dark:border-petrol-800 flex justify-between items-center bg-slate-50 dark:bg-petrol-950">
+                <h2 id="infoModalTitle" class="font-bold text-slate-800 dark:text-petrol-50 text-lg">Titel</h2>
+                <button onclick="closeInfoModal()" class="text-slate-500 hover:text-slate-700 dark:text-petrol-200 dark:hover:text-white text-2xl font-bold leading-none">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto max-h-[60vh]">
+                <p id="infoModalContent" class="text-slate-700 dark:text-petrol-100 leading-relaxed whitespace-pre-wrap"></p>
+            </div>
+            <div class="p-4 border-t border-slate-200 dark:border-petrol-800 bg-slate-50 dark:bg-petrol-950 flex justify-end">
+                <button onclick="closeInfoModal()" class="bg-blue-600 dark:bg-petrol-600 hover:bg-blue-700 dark:hover:bg-petrol-500 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm">
+                    Luk
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. DATA OG KONFIGURATION
+        // ==========================================
+
+        const API_ENDPOINT = "https://llm.dbc.dk/v1/chat/completions";
+        const API_KEY = "sk-bv73cufkhv7wt5t7zf6"; 
+        const MODEL_NAME = "skolegpt-v3";
+        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNKiI1cT87ygopz5H2hg7pg4Zti-pdm-0VGDSDVOlP54Vo2693NP25YPc_awkE3-tMowXC4bMeoGm5/pub?output=csv"; 
+
+        // Samtale-startere (Forslag)
+        const conversationStarters = {
+            "novelleanalyse": [
+                "Hjælp mig med personkarakteristik.",
+                "Hvordan finder jeg novellens tema?",
+                "Jeg har svært ved at forstå slutningen."
+            ],
+            "argumentation": [
+                "Hvad er forskellen på påstand og belæg?",
+                "Kan du læse mit argument og give feedback?",
+                "Hvad betyder gendrivelse egentlig?"
+            ],
+            "essay": [
+                "Hvordan starter jeg et godt essay?",
+                "Er mine refleksioner dybe nok?",
+                "Hjælp mig med at finde den røde tråd."
+            ],
+            "sprog": [
+                "Hjælp mig med at finde metaforer i teksten.",
+                "Hvad betyder intertekstualitet?",
+                "Hvordan beskriver jeg forfatterens tone?"
+            ]
+        };
+
+        const infoContents = {
+            "eleven": {
+                title: "Til dig som elev",
+                content: "Hej! Denne chatbot er din personlige læremakker i dansk.\n\nDen giver dig ikke bare de færdige svar, som du kan skrive af. I stedet stiller den dig gode, vejledende spørgsmål, der hjælper dig med selv at finde frem til de rigtige løsninger.\n\nDet gør dig klogere og meget bedre forberedt til prøverne, uanset om du arbejder med at analysere en novelle, skrive et essay eller argumentere for en holdning."
+            },
+            "foraeldrene": {
+                title: "Til forældrene",
+                content: "Kære forældre.\n\nDenne digitale tutor er designet til at støtte jeres barns læring og nysgerrighed i faget dansk. \n\nI stedet for at fungere som en \"svarmaksine\", der afleverer det færdige arbejde til eleven, bruger denne chatbot en anerkendt sokratisk pædagogik: Den stiller modspørgsmål, anerkender gode pointer, og ansporer barnet til selvstændig tænkning og dybere forståelse af stoffet.\n\nVærktøjet er bygget ovenpå danske AI-modeller, der er lukket forsvarligt af, og deler ikke jeres barns private data."
+            },
+            "laereren": {
+                title: "Til læreren",
+                content: "Kære kollega.\n\nDette værktøj fungerer som en faglig og pædagogisk assistent for dine elever.\n\nDen pædagogiske baggrund bygger på den Sokratiske metode. Gennem avancerede \"system-prompts\" instrueres modellen i aldrig at udlevere konklusioner, men derimod spejle elevens svar, bede om tekstbelæg og stille uddybende spørgsmål inden for zonen for nærmeste udvikling.\n\nDu kan nemt tilpasse og differentiere bottens pædagogik via regnearket (Google Sheets). Løsningen motoriseres af SkoleGPT's API, hvilket sikrer en fuldstændig GDPR- og pædagogisk forsvarlig sprogmodel uden datatræning på elevernes indtastninger."
+            }
+        };
+
+        let promptDatabase = {};
+        const fallbackPrompt = "Du er SkoleGPT, en sokratisk dansklærer. Du taler kun dansk. Giv aldrig direkte svar, men stil hjælpende spørgsmål, der får eleven til at tænke selv.";
+
+        let conversationHistory = [];
+
+        // ==========================================
+        // 2. DOM ELEMENTER
+        // ==========================================
+        const elements = {
+            gradeSelect: document.getElementById('gradeSelect'),
+            subjectSelect: document.getElementById('subjectSelect'),
+            resetBtn: document.getElementById('resetBtn'),
+            exportBtn: document.getElementById('exportBtn'),
+            dyslexiaBtn: document.getElementById('dyslexiaBtn'),
+            hintBtn: document.getElementById('hintBtn'),
+            chatContainer: document.getElementById('chatContainer'),
+            userInput: document.getElementById('userInput'),
+            sendBtn: document.getElementById('sendBtn'),
+            loadingIndicator: document.getElementById('loadingIndicator'),
+            showPromptBtn: document.getElementById('showPromptBtn'),
+            promptModal: document.getElementById('promptModal'),
+            closeModalBtn: document.getElementById('closeModalBtn'),
+            modalPromptText: document.getElementById('modalPromptText'),
+            themeToggleBtn: document.getElementById('themeToggleBtn'),
+            infoModal: document.getElementById('infoModal'),
+            infoModalTitle: document.getElementById('infoModalTitle'),
+            infoModalContent: document.getElementById('infoModalContent')
+        };
+
+        // ==========================================
+        // GOOGLE SHEETS INTEGRATION (CSV Parser)
+        // ==========================================
+        
+        // Skudsikker CSV parser der kan håndtere linjeskift, gåseøjne og Google Sheets finurligheder
+        function parseCSV(text) {
+            const firstLine = text.split('\n')[0] || "";
+            const delimiter = (firstLine.indexOf(';') > -1 && firstLine.indexOf(',') === -1) ? ';' : ',';
+            
+            let result = [];
+            let row = [];
+            let col = '';
+            let insideQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                let c = text[i];
+                let nextC = text[i + 1];
+
+                if (c === '"') {
+                    if (insideQuotes && nextC === '"') {
+                        col += '"'; // Escape gåseøjne
+                        i++; 
+                    } else {
+                        insideQuotes = !insideQuotes;
+                    }
+                } else if (c === delimiter && !insideQuotes) {
+                    row.push(col.trim());
+                    col = '';
+                } else if ((c === '\n' || c === '\r') && !insideQuotes) {
+                    if (c === '\r' && nextC === '\n') {
+                        i++; // Skip windows linjeskift
+                    }
+                    row.push(col.trim());
+                    if (row.join('').trim() !== '') {
+                        result.push(row);
+                    }
+                    row = [];
+                    col = '';
+                } else {
+                    col += c;
+                }
+            }
+            // Tilføj allersidste række hvis der ikke er linjeskift i bunden
+            if (col !== '' || row.length > 0) {
+                row.push(col.trim());
+                if (row.join('').trim() !== '') {
+                    result.push(row);
+                }
+            }
+            return result;
+        }
+
+        async function fetchSystemPrompts() {
+            const btnText = document.getElementById('promptBtnText');
+            
+            if (SHEET_CSV_URL && SHEET_CSV_URL.trim() !== "") {
+                try {
+                    elements.userInput.placeholder = "Indlæser pædagogik...";
+                    elements.userInput.disabled = true;
+                    if(btnText) btnText.textContent = "Henter ark...";
+                    
+                    const response = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+                    if (!response.ok) throw new Error("Kunne ikke hente regneark");
+                    
+                    const csvText = await response.text();
+                    const data = parseCSV(csvText);
+                    const newDatabase = {};
+                    
+                    for (let i = 0; i < data.length; i++) {
+                        const row = data[i];
+                        if (row && row.length >= 3) {
+                            const rawGrade = (row[0] || "").trim();
+                            // Ignorer eventuelle overskrifts-rækker
+                            if (rawGrade.toLowerCase().includes("klasse") && !rawGrade.match(/\d/)) continue;
+                            
+                            const gradeMatch = rawGrade.match(/\d+/);
+                            const grade = gradeMatch ? gradeMatch[0] : null;
+
+                            const rawSubject = (row[1] || "").trim().toLowerCase(); 
+                            let subject = null;
+                            if (rawSubject.includes("novelle")) subject = "novelleanalyse";
+                            else if (rawSubject.includes("argumentation")) subject = "argumentation";
+                            else if (rawSubject.includes("essay")) subject = "essay";
+                            else if (rawSubject.includes("sprog") || rawSubject.includes("stil")) subject = "sprog";
+
+                            const prompt = (row[2] || "").trim();
+                            
+                            if (grade && subject && prompt.length > 5) {
+                                if (!newDatabase[grade]) newDatabase[grade] = {};
+                                newDatabase[grade][subject] = prompt;
+                            }
+                        }
+                    }
+                    if (Object.keys(newDatabase).length > 0) {
+                        promptDatabase = newDatabase; 
+                        
+                        // Visuel succes-besked til brugeren
+                        if(btnText) btnText.textContent = "Systemprompt (Synkroniseret)";
+                        elements.showPromptBtn.classList.add('text-emerald-600', 'dark:text-emerald-400');
+                    } else {
+                        if(btnText) btnText.textContent = "Systemprompt (Fejl i data)";
+                    }
+                } catch (error) {
+                    console.error("Fejl ved indlæsning fra Google Sheet.", error);
+                    if(btnText) btnText.textContent = "Systemprompt (Fejl)";
+                } finally {
+                    elements.userInput.placeholder = "Skriv din besked her...";
+                    elements.userInput.disabled = false;
+                }
+            }
+        }
+
+        async function initApp() {
+            // Hent indstillinger fra LocalStorage
+            if(localStorage.getItem('dyslexiaMode') === 'true') {
+                document.body.classList.add('dyslexic-mode');
+            }
+
+            // Hent nyeste prompts fra Google Sheets først
+            await fetchSystemPrompts();
+            
+            // Check om der er en gemt samtale
+            const savedHistory = localStorage.getItem('chatHistory');
+            if (savedHistory) {
+                try {
+                    // Indlæs historik og opdater UI
+                    conversationHistory = JSON.parse(savedHistory);
+                    elements.gradeSelect.value = localStorage.getItem('chatGrade') || "8";
+                    elements.subjectSelect.value = localStorage.getItem('chatSubject') || "novelleanalyse";
+                    
+                    // VIGTIGT: Opdater den gamle gemte systemprompt med den (muligvis nye) fra regnearket!
+                    if (conversationHistory.length > 0 && conversationHistory[0].role === "system") {
+                        conversationHistory[0].content = getActiveSystemPrompt();
+                    }
+                    
+                    renderHistoryToUI();
+                    updateHintButtonVisibility();
+                } catch (e) {
+                    resetConversation();
+                }
+            } else {
+                resetConversation();
+            }
+        }
+
+        // ==========================================
+        // 3. LOGIK & FUNKTIONER
+        // ==========================================
+
+        function getActiveSystemPrompt() {
+            const grade = elements.gradeSelect.value;
+            const subject = elements.subjectSelect.value;
+            if (promptDatabase[grade] && promptDatabase[grade][subject]) {
+                return promptDatabase[grade][subject];
+            }
+            return fallbackPrompt;
+        }
+
+        function saveState() {
+            localStorage.setItem('chatHistory', JSON.stringify(conversationHistory));
+            localStorage.setItem('chatGrade', elements.gradeSelect.value);
+            localStorage.setItem('chatSubject', elements.subjectSelect.value);
+            updateHintButtonVisibility();
+        }
+
+        // Eksporterer chat til en tekstdokument
+        function exportNotes() {
+            if (conversationHistory.length <= 1) return alert("Der er ingen samtale at eksportere endnu.");
+            
+            const subject = elements.subjectSelect.options[elements.subjectSelect.selectedIndex].text;
+            let textData = `Sokratisk Dansk-Tutor - Mine Noter\nEmne: ${subject}\nDato: ${new Date().toLocaleDateString('da-DK')}\n----------------------------------------\n\n`;
+            
+            conversationHistory.forEach(msg => {
+                if(msg.role === 'user') {
+                    textData += `DIG:\n${msg.content}\n\n`;
+                } else if(msg.role === 'assistant') {
+                    // Fjern markdown bolding (**) for ren tekst
+                    let cleanText = msg.content.replace(/\*\*(.*?)\*\*/g, '$1');
+                    textData += `TUTOR:\n${cleanText}\n\n----------------------------------------\n\n`;
+                }
+            });
+
+            const blob = new Blob([textData], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `Dansk_Noter_${subject.replace(/ /g, '_')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Viser/skjuler Hint-knappen afhængig af om samtalen er i gang
+        function updateHintButtonVisibility() {
+            if (conversationHistory.length > 1) {
+                elements.hintBtn.classList.remove('hidden', 'opacity-0', '-translate-y-full');
+                elements.hintBtn.classList.add('opacity-100', 'translate-y-0');
+            } else {
+                elements.hintBtn.classList.add('hidden', 'opacity-0', '-translate-y-full');
+                elements.hintBtn.classList.remove('opacity-100', 'translate-y-0');
+            }
+        }
+
+        function renderHistoryToUI() {
+            elements.chatContainer.innerHTML = '';
+            
+            // Tilføj velkomstbesked
+            const subjectText = elements.subjectSelect.options[elements.subjectSelect.selectedIndex].text;
+            const gradeText = elements.gradeSelect.options[elements.gradeSelect.selectedIndex].text;
+            
+            const welcomeBubble = createMessageBubble("assistant");
+            welcomeBubble.update(`Hej igen! Jeg har gemt vores samtale. Vi arbejdede med **${subjectText}** på **${gradeText}** niveau.\n\nDu kan fortsætte, hvor vi slap, eller trykke på "Nulstil" øverst, hvis du vil starte på et nyt emne.`);
+
+            // Tegn resten af historikken
+            for (let i = 1; i < conversationHistory.length; i++) {
+                appendMessageToUI(conversationHistory[i].role, conversationHistory[i].content);
+            }
+        }
+
+        function createMessageBubble(role) {
+            const isUser = role === 'user';
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex gap-4 ${isUser ? 'flex-row-reverse' : ''} animate-fade-in`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border ${
+                isUser ? 'bg-slate-700 dark:bg-petrol-700 text-white border-slate-800 dark:border-petrol-800' : 'bg-blue-100 dark:bg-petrol-800 border-blue-200 dark:border-petrol-700 dark:text-petrol-50'
+            }`;
+            avatar.innerHTML = isUser ? '👤' : '🤖';
+
+            const bubble = document.createElement('div');
+            bubble.className = `p-4 rounded-2xl shadow-sm text-sm sm:text-base leading-relaxed max-w-[85%] whitespace-pre-wrap ${
+                isUser 
+                ? 'bg-blue-600 dark:bg-petrol-600 text-white rounded-tr-none border-blue-700 dark:border-petrol-700' 
+                : 'bg-white dark:bg-petrol-900 text-slate-700 dark:text-petrol-50 rounded-tl-none border border-slate-200 dark:border-petrol-800'
+            }`;
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(bubble);
+            elements.chatContainer.appendChild(messageDiv);
+            
+            return {
+                update: (text) => {
+                    let formattedContent = text;
+                    if (!isUser) {
+                        formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    }
+                    bubble.innerHTML = formattedContent;
+                    elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+                }
+            };
+        }
+
+        function appendMessageToUI(role, content) {
+            const bubble = createMessageBubble(role);
+            bubble.update(content);
+        }
+
+        function renderStarters() {
+            const subject = elements.subjectSelect.value;
+            const starters = conversationStarters[subject];
+            
+            if (!starters) return;
+
+            const starterContainer = document.createElement('div');
+            starterContainer.id = "starterContainer";
+            starterContainer.className = "flex flex-wrap gap-2 mt-2 ml-12 animate-fade-in";
+            
+            starters.forEach(text => {
+                const btn = document.createElement('button');
+                btn.className = "bg-blue-50 dark:bg-petrol-800 border border-blue-200 dark:border-petrol-700 hover:bg-blue-100 dark:hover:bg-petrol-700 text-blue-700 dark:text-petrol-100 text-sm py-1.5 px-3 rounded-full transition-colors shadow-sm text-left";
+                btn.textContent = text;
+                btn.onclick = () => {
+                    elements.userInput.value = text;
+                    handleSend();
+                    starterContainer.remove(); // Fjern knapperne når de er brugt
+                };
+                starterContainer.appendChild(btn);
+            });
+
+            elements.chatContainer.appendChild(starterContainer);
+        }
+
+        function resetConversation() {
+            const sysPrompt = getActiveSystemPrompt();
+            
+            conversationHistory = [
+                { role: "system", content: sysPrompt }
+            ];
+
+            // Slet gemt historik
+            localStorage.removeItem('chatHistory');
+            updateHintButtonVisibility();
+
+            elements.chatContainer.innerHTML = '';
+            
+            const subjectText = elements.subjectSelect.options[elements.subjectSelect.selectedIndex].text;
+            const gradeText = elements.gradeSelect.options[elements.gradeSelect.selectedIndex].text;
+            
+            const welcomeBubble = createMessageBubble("assistant");
+            welcomeBubble.update(`Hej! Jeg er din læremakker i dansk. Vi arbejder nu med **${subjectText}** på **${gradeText}** niveau.\n\nHvad vil du gerne kigge på, eller hvad har du svært ved? Husk: Jeg giver dig ikke svarene direkte, men hjælper dig med selv at finde frem til dem!`);
+
+            // Vis forslag til samtale-startere
+            renderStarters();
+        }
+
+        function toggleLoading(show) {
+            if (show) {
+                elements.loadingIndicator.classList.remove('hidden');
+                elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+            } else {
+                elements.loadingIndicator.classList.add('hidden');
+            }
+            elements.sendBtn.disabled = show;
+            elements.userInput.disabled = show;
+            
+            if(show) {
+                elements.sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                elements.sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                elements.userInput.focus();
+            }
+        }
+
+        async function handleSend(forcedText = null) {
+            const text = forcedText || elements.userInput.value.trim();
+            if (!text) return;
+
+            // Fjern eventuelle ubrugte startere
+            const starterDiv = document.getElementById('starterContainer');
+            if (starterDiv) starterDiv.remove();
+
+            appendMessageToUI("user", text);
+            elements.userInput.value = '';
+            elements.userInput.style.height = 'auto';
+
+            conversationHistory.push({ role: "user", content: text });
+            saveState(); // Gem at brugeren har skrevet
+
+            toggleLoading(true);
+
+            const payload = {
+                model: MODEL_NAME,
+                messages: conversationHistory,
+                stream: true
+            };
+
+            const botBubble = createMessageBubble("assistant");
+            let fullResponse = "";
+
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`Serverfejl: ${response.status}`);
+
+                toggleLoading(false);
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let buffer = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); 
+                    
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed) continue;
+                        if (trimmed === 'data: [DONE]') continue;
+                        
+                        if (trimmed.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(trimmed.substring(6));
+                                if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
+                                    fullResponse += data.choices[0].delta.content;
+                                    botBubble.update(fullResponse);
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+
+                conversationHistory.push({ role: "assistant", content: fullResponse });
+                saveState(); // Gem bottens svar
+
+            } catch (error) {
+                console.error("Fetch fejl:", error);
+                toggleLoading(false);
+                botBubble.update(`Beklager, jeg stødte på en fejl: ${error.message}`);
+            }
+        }
+
+        // ==========================================
+        // 4. EVENT LISTENERS & MODALS
+        // ==========================================
+
+        elements.sendBtn.addEventListener('click', () => handleSend());
+        elements.resetBtn.addEventListener('click', resetConversation);
+        elements.exportBtn.addEventListener('click', exportNotes);
+
+        // Skift i dropdowns rydder chatten automatisk og sætter nyt emne
+        elements.gradeSelect.addEventListener('change', resetConversation);
+        elements.subjectSelect.addEventListener('change', resetConversation);
+
+        // Ordblinde-venligt design toggle
+        elements.dyslexiaBtn.addEventListener('click', () => {
+            const isDyslexic = document.body.classList.toggle('dyslexic-mode');
+            localStorage.setItem('dyslexiaMode', isDyslexic);
+            
+            // Giv lille visuel feedback på knappen
+            elements.dyslexiaBtn.classList.add('bg-blue-200', 'dark:bg-teal-700');
+            setTimeout(() => {
+                elements.dyslexiaBtn.classList.remove('bg-blue-200', 'dark:bg-teal-700');
+            }, 300);
+        });
+
+        // "Giv mig et hint"-knap genvej
+        elements.hintBtn.addEventListener('click', () => {
+            const hintText = "Jeg er kørt lidt fast og ved ikke helt, hvad jeg skal svare. Kan du give mig et lille hint eller spørge mig på en anden måde, uden at give mig svaret?";
+            handleSend(hintText);
+        });
+
+        // Systemprompt Modal
+        elements.showPromptBtn.addEventListener('click', () => {
+            elements.modalPromptText.textContent = getActiveSystemPrompt();
+            elements.promptModal.classList.remove('hidden');
+        });
+        elements.closeModalBtn.addEventListener('click', () => elements.promptModal.classList.add('hidden'));
+        elements.promptModal.addEventListener('click', (e) => {
+            if (e.target === elements.promptModal) elements.promptModal.classList.add('hidden');
+        });
+
+        // Info Modals
+        function openInfoModal(target) {
+            const data = infoContents[target];
+            if (data) {
+                elements.infoModalTitle.textContent = data.title;
+                elements.infoModalContent.textContent = data.content;
+                elements.infoModal.classList.remove('hidden');
+            }
+        }
+        function closeInfoModal() { elements.infoModal.classList.add('hidden'); }
+        elements.infoModal.addEventListener('click', (e) => {
+            if (e.target === elements.infoModal) closeInfoModal();
+        });
+
+        // Tema Toggle
+        elements.themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+        });
+
+        // Enter for at sende
+        elements.userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); 
+                handleSend();
+            }
+        });
+
+        // Auto-resize tekstboks
+        elements.userInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            if(this.value === '') this.style.height = '44px';
+        });
+
+        // Kør initialisering ved load
+        initApp();
+
+    </script>
+</body>
+</html>
