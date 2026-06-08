@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sokratisk Dansk-tutor</title>
+    <title>Sokratisk Dansk-Tutor</title>
     <!-- Tailwind CSS til moderne og responsivt design -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -265,8 +265,7 @@
         // 1. DATA OG KONFIGURATION
         // ==========================================
 
-        const API_ENDPOINT = "https://llm.dbc.dk/v1/chat/completions";
-        const API_KEY = "sk-bv73cufkhv7wt5t7zf6"; 
+        const API_ENDPOINT = "https://begrebsforklarer-proxy.awmeister.workers.dev/";
         const MODEL_NAME = "skolegpt-v3";
         const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNKiI1cT87ygopz5H2hg7pg4Zti-pdm-0VGDSDVOlP54Vo2693NP25YPc_awkE3-tMowXC4bMeoGm5/pub?output=csv"; 
 
@@ -693,7 +692,7 @@
                 const response = await fetch(API_ENDPOINT, {
                     method: "POST",
                     headers: {
-                        "Authorization": `Bearer ${API_KEY}`,
+                        // Authorization headeren er fjernet her, da Cloudflare proxyen nu indsætter nøglen sikkert!
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify(payload)
