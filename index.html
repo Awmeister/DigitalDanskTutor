@@ -104,9 +104,10 @@
                     </h1>
                 </div>
                 
-                <div class="flex gap-2 items-center w-full sm:w-auto justify-center">
+                <div class="flex flex-wrap gap-2 items-center w-full sm:w-auto justify-center">
                     <!-- Dropdown: Klassetrin -->
                     <select id="gradeSelect" class="bg-slate-100 dark:bg-petrol-950 border border-slate-300 dark:border-petrol-800 text-slate-700 dark:text-petrol-50 text-sm rounded-lg focus:ring-petrol-500 focus:border-petrol-500 block p-2 outline-none">
+                        <option value="" disabled selected>Vælg klassetrin</option>
                         <option value="7">7. Klasse</option>
                         <option value="8">8. Klasse</option>
                         <option value="9">9. Klasse</option>
@@ -114,6 +115,7 @@
 
                     <!-- Dropdown: Emne -->
                     <select id="subjectSelect" class="bg-slate-100 dark:bg-petrol-950 border border-slate-300 dark:border-petrol-800 text-slate-700 dark:text-petrol-50 text-sm rounded-lg focus:ring-petrol-500 focus:border-petrol-500 block p-2 outline-none">
+                        <option value="" disabled selected>Vælg emne</option>
                         <option value="novelleanalyse">Novelleanalyse</option>
                         <option value="argumentation">Argumentation</option>
                         <option value="essay">Essay-skrivning</option>
@@ -123,7 +125,7 @@
             </div>
 
             <!-- Nederste linje: Knapper -->
-            <div class="flex flex-wrap gap-2 items-center w-full justify-center sm:justify-end">
+            <div class="flex flex-wrap gap-2 items-center w-full justify-center sm:justify-start">
                 <!-- Se systemprompt knap -->
                 <button id="showPromptBtn" class="bg-slate-200 dark:bg-petrol-800 hover:bg-slate-300 dark:hover:bg-petrol-700 text-slate-700 dark:text-petrol-50 text-sm font-medium rounded-lg px-3 py-2 transition-colors flex items-center gap-1" title="Se aktuel systemprompt">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -267,7 +269,7 @@
 
         const API_ENDPOINT = "https://begrebsforklarer-proxy.awmeister.workers.dev/";
         const MODEL_NAME = "skolegpt-v3";
-        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSNKiI1cT87ygopz5H2hg7pg4Zti-pdm-0VGDSDVOlP54Vo2693NP25YPc_awkE3-tMowXC4bMeoGm5/pub?output=csv"; 
+        const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQk_If0OdItiKC3bbck_knn2VRA-lQ8ZE6F2suSp28eZVTnmxMtNjFEB3T23TDMRIrvdHL02pSH9ThY/pub?output=csv"; 
 
         // Samtale-startere (Forslag)
         const conversationStarters = {
@@ -341,52 +343,22 @@
         // GOOGLE SHEETS INTEGRATION (CSV Parser)
         // ==========================================
         
-        // Skudsikker CSV parser der kan håndtere linjeskift, gåseøjne og Google Sheets finurligheder
-        function parseCSV(text) {
-            const firstLine = text.split('\n')[0] || "";
-            const delimiter = (firstLine.indexOf(';') > -1 && firstLine.indexOf(',') === -1) ? ';' : ',';
-            
-            let result = [];
-            let row = [];
-            let col = '';
-            let insideQuotes = false;
-
-            for (let i = 0; i < text.length; i++) {
-                let c = text[i];
-                let nextC = text[i + 1];
-
-                if (c === '"') {
-                    if (insideQuotes && nextC === '"') {
-                        col += '"'; // Escape gåseøjne
-                        i++; 
-                    } else {
-                        insideQuotes = !insideQuotes;
-                    }
-                } else if (c === delimiter && !insideQuotes) {
-                    row.push(col.trim());
-                    col = '';
-                } else if ((c === '\n' || c === '\r') && !insideQuotes) {
-                    if (c === '\r' && nextC === '\n') {
-                        i++; // Skip windows linjeskift
-                    }
-                    row.push(col.trim());
-                    if (row.join('').trim() !== '') {
-                        result.push(row);
-                    }
-                    row = [];
-                    col = '';
-                } else {
-                    col += c;
-                }
+        function parseCSV(str) {
+            const arr = [];
+            let quote = false;
+            let row = 0, col = 0;
+            for (let c = 0; c < str.length; c++) {
+                let cc = str[c], nc = str[c+1];
+                arr[row] = arr[row] || [];
+                if (cc == '"' && quote && nc == '"') { arr[row][col] += cc; ++c; continue; }
+                if (cc == '"') { quote = !quote; continue; }
+                if (cc == ',' && !quote) { ++col; continue; }
+                if (cc == '\r' && nc == '\n' && !quote) { ++row; col = 0; ++c; continue; }
+                if (cc == '\n' && !quote) { ++row; col = 0; continue; }
+                if (cc == '\r' && !quote) { ++row; col = 0; continue; }
+                arr[row][col] = (arr[row][col] || '') + cc;
             }
-            // Tilføj allersidste række hvis der ikke er linjeskift i bunden
-            if (col !== '' || row.length > 0) {
-                row.push(col.trim());
-                if (row.join('').trim() !== '') {
-                    result.push(row);
-                }
-            }
-            return result;
+            return arr;
         }
 
         async function fetchSystemPrompts() {
@@ -394,22 +366,22 @@
             
             if (SHEET_CSV_URL && SHEET_CSV_URL.trim() !== "") {
                 try {
-                    elements.userInput.placeholder = "Indlæser pædagogik...";
-                    elements.userInput.disabled = true;
                     if(btnText) btnText.textContent = "Henter ark...";
                     
-                    const response = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+                    // Cache-buster (&cb=...) tvinger browseren til at hente den absolut nyeste version af arket!
+                    const response = await fetch(SHEET_CSV_URL + "&cb=" + new Date().getTime(), { cache: "no-store" });
                     if (!response.ok) throw new Error("Kunne ikke hente regneark");
                     
                     const csvText = await response.text();
                     const data = parseCSV(csvText);
                     const newDatabase = {};
                     
+                    // Starter fra 0, i tilfælde af at du ikke har overskrifter i række 1
                     for (let i = 0; i < data.length; i++) {
                         const row = data[i];
                         if (row && row.length >= 3) {
                             const rawGrade = (row[0] || "").trim();
-                            // Ignorer eventuelle overskrifts-rækker
+                            // Ignorer eventuelle overskrifts-rækker, der indholder tekst i stedet for tal
                             if (rawGrade.toLowerCase().includes("klasse") && !rawGrade.match(/\d/)) continue;
                             
                             const gradeMatch = rawGrade.match(/\d+/);
@@ -430,21 +402,18 @@
                             }
                         }
                     }
+                    
                     if (Object.keys(newDatabase).length > 0) {
-                        promptDatabase = newDatabase; 
-                        
-                        // Visuel succes-besked til brugeren (Nu med kortere "Systemprompt ✓" tekst)
+                        // Fletter de nye prompts ind
+                        promptDatabase = Object.assign(promptDatabase, newDatabase); 
                         if(btnText) btnText.textContent = "Systemprompt ✓";
                         elements.showPromptBtn.classList.add('text-emerald-600', 'dark:text-emerald-400');
                     } else {
-                        if(btnText) btnText.textContent = "Systemprompt (Fejl i data)";
+                        throw new Error("Ingen gyldige prompts fundet i CSV");
                     }
                 } catch (error) {
-                    console.error("Fejl ved indlæsning fra Google Sheet.", error);
+                    console.error("Fejl ved indlæsning fra Google Sheet:", error);
                     if(btnText) btnText.textContent = "Systemprompt (Fejl)";
-                } finally {
-                    elements.userInput.placeholder = "Skriv din besked her...";
-                    elements.userInput.disabled = false;
                 }
             }
         }
@@ -455,25 +424,35 @@
                 document.body.classList.add('dyslexic-mode');
             }
 
-            // Hent nyeste prompts fra Google Sheets først
+            // Hent nyeste prompts først
             await fetchSystemPrompts();
             
             // Check om der er en gemt samtale
             const savedHistory = localStorage.getItem('chatHistory');
-            if (savedHistory) {
+            const savedGrade = localStorage.getItem('chatGrade');
+            const savedSubject = localStorage.getItem('chatSubject');
+            
+            if (savedHistory && savedGrade && savedSubject) {
                 try {
                     // Indlæs historik og opdater UI
                     conversationHistory = JSON.parse(savedHistory);
-                    elements.gradeSelect.value = localStorage.getItem('chatGrade') || "8";
-                    elements.subjectSelect.value = localStorage.getItem('chatSubject') || "novelleanalyse";
+                    elements.gradeSelect.value = savedGrade;
+                    elements.subjectSelect.value = savedSubject;
                     
-                    // VIGTIGT: Opdater den gamle gemte systemprompt med den (muligvis nye) fra regnearket!
+                    // Opdater den gamle gemte systemprompt med den nyeste
                     if (conversationHistory.length > 0 && conversationHistory[0].role === "system") {
                         conversationHistory[0].content = getActiveSystemPrompt();
                     }
                     
                     renderHistoryToUI();
                     updateHintButtonVisibility();
+                    
+                    // Åbn chatten
+                    elements.userInput.disabled = false;
+                    elements.sendBtn.disabled = false;
+                    elements.userInput.placeholder = "Skriv din besked her...";
+                    elements.userInput.classList.remove('opacity-50', 'bg-slate-100', 'dark:bg-petrol-900');
+                    elements.sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 } catch (e) {
                     resetConversation();
                 }
@@ -622,6 +601,38 @@
         }
 
         function resetConversation() {
+            const grade = elements.gradeSelect.value;
+            const subject = elements.subjectSelect.value;
+            
+            elements.chatContainer.innerHTML = '';
+            
+            // Fjern eventuelle gamle startere
+            const starterDiv = document.getElementById('starterContainer');
+            if (starterDiv) starterDiv.remove();
+
+            // Hvis eleven ikke har valgt klasse og emne endnu
+            if (!grade || !subject) {
+                const welcomeBubble = createMessageBubble("assistant");
+                welcomeBubble.update("Hej! Jeg er din læremakker i dansk.\n\nStart med at **vælge klassetrin og emne** i toppen af skærmen, så vi kan komme i gang!");
+                
+                elements.userInput.disabled = true;
+                elements.sendBtn.disabled = true;
+                elements.userInput.placeholder = "Vælg klassetrin og emne først...";
+                elements.userInput.classList.add('opacity-50', 'bg-slate-100', 'dark:bg-petrol-900');
+                elements.sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                
+                conversationHistory = [];
+                updateHintButtonVisibility();
+                return;
+            }
+
+            // Hvis klasse og emne ER valgt, åbn chatten
+            elements.userInput.disabled = false;
+            elements.sendBtn.disabled = false;
+            elements.userInput.placeholder = "Skriv din besked her...";
+            elements.userInput.classList.remove('opacity-50', 'bg-slate-100', 'dark:bg-petrol-900');
+            elements.sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
             const sysPrompt = getActiveSystemPrompt();
             
             conversationHistory = [
@@ -631,8 +642,6 @@
             // Slet gemt historik
             localStorage.removeItem('chatHistory');
             updateHintButtonVisibility();
-
-            elements.chatContainer.innerHTML = '';
             
             const subjectText = elements.subjectSelect.options[elements.subjectSelect.selectedIndex].text;
             const gradeText = elements.gradeSelect.options[elements.gradeSelect.selectedIndex].text;
